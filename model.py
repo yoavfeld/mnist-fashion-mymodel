@@ -1,44 +1,33 @@
-
 import sys
 import os
+from sklearn.utils import shuffle
+from numpy.random import seed
 
 import tensorflow as tf
 from tensorflow.keras import layers
-#from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping
-from numpy.random import seed
+from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping, TensorBoard
 from tensorflow import set_random_seed
+from tensorflow.keras.utils import plot_model
+
 import plot
-from sklearn.utils import shuffle
+import callbacks as cb
 
 # init random seed and turn off annoying warning
 seed(1)
-set_random_seed(2)
+set_random_seed(1)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 ## training params
 batch_size=128
-epochs=150
+epochs=100
 lr=0.0001
 
 ## images dimensions
 w, h = 28, 28
 channels = 1
 
-## callbacks
-cb_checkpoint = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=0, save_best_only=True)
-cb_logger = CSVLogger('training.log')
-cb_val_los_monitor = EarlyStopping(monitor='val_loss', patience=10)
-callbacks = [
-    cb_checkpoint,
-    cb_logger,
-    plot.PlotCB(),
-    cb_val_los_monitor,
-]
-
 # Load the fashion-mnist pre-shuffled train data and test data
 (x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
-
 print("x_train shape:", x_train.shape, "y_train shape:", y_train.shape)
 
 # Data normalization
@@ -73,16 +62,15 @@ print(x_valid.shape[0], 'validation set')
 print(x_test.shape[0], 'test set')
 
 model = tf.keras.Sequential()
-#initializer = tf.keras.initializers.glorot_normal(seed=5)
+initializer = tf.contrib.layers.xavier_initializer()
 
-# Normalization
-#model.add(layers.InputLayer(input_shape=(h, w, channels)))
+# CNN
+# 2 groups of BatchNormalization + Conv + Maxpooling + Droupout layers
 model.add(layers.BatchNormalization(input_shape=(h, w, channels)))
-
-# 2 groups of Conv + Maxpooling + Droupout layers
 model.add(layers.Conv2D(filters=32,kernel_size=3,activation='relu'))
 model.add(layers.MaxPooling2D(pool_size=2))
 model.add(layers.Dropout(0.2))
+model.add(layers.BatchNormalization())
 model.add(layers.Conv2D(filters=64,kernel_size=3,padding='same',activation='relu'))
 model.add(layers.MaxPooling2D(pool_size=2))
 model.add(layers.Dropout(0.3))
@@ -90,17 +78,21 @@ model.add(layers.Dropout(0.3))
 # Converting to 1D feature Vector
 model.add(layers.Flatten())
 
-# Dense layers
-model.add(layers.Dense(256, activation='relu'))
+# FC layers
+# 2 groups of BatchNormalization, Dense, Dropout.
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(512, activation='relu', kernel_initializer=initializer))
 model.add(layers.Dropout(0.4))
-model.add(layers.Dense(64, activation='relu'))
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(128, activation='relu'))
 model.add(layers.Dropout(0.5))
 
-# Normalization + last dense layer
+# BatchNormalization + last dense layer
 model.add(layers.BatchNormalization())
 model.add(layers.Dense(10, activation='softmax'))
 
 opt = tf.keras.optimizers.Adam(lr=lr)
+
 ## Compile the model
 model.compile(loss='categorical_crossentropy',
              optimizer=opt,
@@ -109,14 +101,32 @@ model.compile(loss='categorical_crossentropy',
 # Take a look at the model summary
 model.summary()
 
-test = ""
+mode = ""
 if len(sys.argv) > 1:
-    test = sys.argv[1]
+    mode = sys.argv[1]
 
-if test == 'test':
+if mode == 'test':
     # Load the weights with the best validation accuracy
     model.load_weights('model.weights.best.hdf5')
+elif mode == 'arc':
+    model.load_weights("model.weights.best.hdf5")
+    plot_model(model, to_file='model.png')
+
 else:
+    ## callbacks
+    cb_checkpoint = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=0, save_best_only=True)
+    cb_logger = CSVLogger('training.log')
+    cb_val_los_monitor = EarlyStopping(monitor='val_loss', patience=10)
+    cb_board = TensorBoard(write_grads=True, histogram_freq=5)
+    callbacks = [
+        cb_checkpoint,
+        cb_logger,
+        cb_val_los_monitor,
+        cb.PlotCB(),
+        cb.TestCB((x_test, y_test))
+        #cb_board
+    ]
+
     ## Train the model
     model.fit(x_train,
              y_train,
@@ -134,9 +144,7 @@ score = model.evaluate(x_test, y_test, verbose=0)
 # Print test accuracy
 print('\n', 'Test accuracy:', score[1])
 
-#plot.visualize(model, x_test, y_test)
+plot.visualize(model, x_test, y_test)
 
 ##TODO (lesson 6 ppt):
-# adding xavier init
 # add data normalize:  -mean  / std between pics calculations #37
-

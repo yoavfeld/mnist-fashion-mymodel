@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import pandas as pd
-from tensorflow import keras
 import numpy as np
 
 # Plot metrics history
@@ -19,13 +18,6 @@ def plot_hist(history_file):
         plt.ylabel(metric)
         plt.savefig('.'.join([prefix, metric.lower(), 'png']))
         plt.close()
-
-class PlotCB(keras.callbacks.Callback):
-    def on_epoch_end(self, logs={}, c={}):
-        plot_hist("training.log")
-
-    #def on_batch_end(self, batch, logs={}):
-
 
 
 def visualize(model, x_test, y_test):
