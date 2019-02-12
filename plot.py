@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import os
 
 # Plot metrics history
 def plot_hist(history_file):
@@ -40,6 +41,7 @@ def visualize(model, x_test, y_test):
     # Plot a random sample of 10 test images, their predicted labels and ground truth
     figure = plt.figure(figsize=(20, 8))
     for i, index in enumerate(np.random.choice(x_test.shape[0], size=15, replace=False)):
+        print('yoav')
         ax = figure.add_subplot(3, 5, i + 1, xticks=[], yticks=[])
         # Display each image
         ax.imshow(np.squeeze(x_test[index]))
@@ -48,4 +50,11 @@ def visualize(model, x_test, y_test):
         # Set the title for each image
         ax.set_title("{} ({})".format(fashion_mnist_labels[predict_index],
                                       fashion_mnist_labels[true_index]),
+
+
+
+
+
                                       color=("green" if predict_index == true_index else "red"))
+
+        #figure.show()
