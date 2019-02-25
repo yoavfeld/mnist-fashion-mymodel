@@ -1,12 +1,12 @@
 import sys
 import os
 
-from numpy.random import seed
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping, TensorBoard
 from tensorflow import set_random_seed
+from numpy.random import seed
 
 import modes
 import callbacks as cb
@@ -22,9 +22,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 ## training params
 batch_size=128
 epochs=150
+initializer = tf.contrib.layers.xavier_initializer()
 lr=0.0001
 activation = 'relu'
-act_layer = None #layers.LeakyReLU()
+#act_layer = layers.LeakyReLU()
+
 
 ## images dimensions
 w, h = 28, 28
@@ -61,17 +63,14 @@ print(x_valid.shape[0], 'validation set')
 print(x_test.shape[0], 'test set')
 
 model = keras.Sequential()
-initializer = tf.contrib.layers.xavier_initializer()
 
 # CNN - 2 groups of BatchNormalization + Conv + Maxpooling + Droupout layers
 model.add(layers.BatchNormalization(input_shape=(h, w, channels)))
 model.add(layers.Conv2D(filters=32,kernel_size=3,activation=activation))
-#model.add(act_layer)
 model.add(layers.MaxPooling2D(pool_size=2))
 model.add(layers.Dropout(0.2))
 model.add(layers.BatchNormalization())
 model.add(layers.Conv2D(filters=64,kernel_size=3,padding='same',activation=activation))
-#model.add(act_layer)
 model.add(layers.MaxPooling2D(pool_size=2))
 model.add(layers.Dropout(0.3))
 
@@ -81,16 +80,15 @@ model.add(layers.Flatten())
 # FC layers - 2 groups of BatchNormalization, Dense, Dropout.
 model.add(layers.BatchNormalization())
 model.add(layers.Dense(512, activation=activation, kernel_initializer=initializer))
-#model.add(act_layer)
 model.add(layers.Dropout(0.4))
 model.add(layers.BatchNormalization())
 model.add(layers.Dense(128, activation=activation))
-#model.add(act_layer)
 model.add(layers.Dropout(0.5))
+
 
 # BatchNormalization + last dense layer
 model.add(layers.BatchNormalization())
-model.add(layers.Dense(10, activation='softmax'))
+model.add(layers.Dense(10))
 
 opt = keras.optimizers.Adam(lr=lr)
 
@@ -111,14 +109,12 @@ if len(sys.argv) > 1:
 cb_checkpoint = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=0, save_best_only=True)
 cb_logger = CSVLogger('training.log')
 cb_val_los_monitor = EarlyStopping(monitor='val_loss', patience=10)
-#cb_board = TensorBoard(write_grads=True, histogram_freq=5)
 callbacks = [
     cb_checkpoint,
     cb_logger,
     cb_val_los_monitor,
     cb.PlotCB(),
     cb.TestCB((x_test, y_test)),
-    #cb_board
 ]
 
 ## Train the model
@@ -135,6 +131,3 @@ score = model.evaluate(x_test, y_test, verbose=0)
 
 # Print test accuracy
 print('\n', 'Test accuracy:', score[1])
-
-##TODO (lesson 6 ppt):
-# add data normalize:  -mean  / std between pics calculations #37
