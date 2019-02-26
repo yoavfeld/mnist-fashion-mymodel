@@ -22,3 +22,4 @@ python3.6 model.py cm
 python3.6 model.py arc
 
 ## Research
+experiments results can be seen in accuracy and loss plots in folder plot/ .you are more then welcome to add more.
