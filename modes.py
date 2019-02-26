@@ -4,20 +4,22 @@ import numpy as np
 import plot
 import time
 
-def modes(mode, model, x_test, y_test):
-    model.load_weights("model.weights.best.hdf5")
+def modes(mode, model, weightsFile, x_test, y_test):
+    model.load_weights(weightsFile)
     if mode == 'test':
         score = model.evaluate(x_test, y_test, verbose=0)
         print('\n', 'Test accuracy:', score[1])
+    elif mode == 'pred':
+        a = np.full((1, 28, 28, 1), 0)
+        a[0] = x_test[0]
+        start = time.clock()
+        model.predict(a)
+        end = time.clock()
+        print("Time per image prediction: {} ".format((end - start) / len(x_test)))
     elif mode == 'arc':
         plot_model(model, to_file='model.png')
     elif mode == 'vis':
         plot.visualize_accuracy(model, x_test, y_test)
-    elif mode == 'pred':
-        start = time.clock()
-        model.predict(x_test)
-        end = time.clock()
-        print("Time per image: {} ".format((end - start) / len(x_test)))
     elif mode == 'cm':
         ypred_onehot = model.predict(x_test)
         ypred = np.argmax(ypred_onehot, axis=1)

@@ -11,22 +11,21 @@ from numpy.random import seed
 import modes
 import callbacks as cb
 
-# enable for development
-# init random seed
+# init random seed (enable for development)
 #seed(1)
 #set_random_seed(1)
 
 #turn off annoying warning
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-## training params
+## params
 batch_size=128
 epochs=150
 initializer = tf.contrib.layers.xavier_initializer()
 lr=0.0001
 activation = 'relu'
 #act_layer = layers.LeakyReLU()
-
+weightsFile = 'model.weights.best.hdf5'
 
 ## images dimensions
 w, h = 28, 28
@@ -64,7 +63,7 @@ print(x_test.shape[0], 'test set')
 
 model = keras.Sequential()
 
-# CNN - 2 groups of BatchNormalization + Conv + Maxpooling + Droupout layers
+# CNN - 2 X BatchNormalization + Conv + Maxpooling + Droupout layers
 model.add(layers.BatchNormalization(input_shape=(h, w, channels)))
 model.add(layers.Conv2D(filters=32,kernel_size=3,activation=activation))
 model.add(layers.MaxPooling2D(pool_size=2))
@@ -77,14 +76,13 @@ model.add(layers.Dropout(0.3))
 # Converting to 1D feature Vector
 model.add(layers.Flatten())
 
-# FC layers - 2 groups of BatchNormalization, Dense, Dropout.
+# FC - 2 X BatchNormalization, Dense, Dropout.
 model.add(layers.BatchNormalization())
 model.add(layers.Dense(512, activation=activation, kernel_initializer=initializer))
 model.add(layers.Dropout(0.4))
 model.add(layers.BatchNormalization())
 model.add(layers.Dense(128, activation=activation))
 model.add(layers.Dropout(0.5))
-
 
 # BatchNormalization + last dense layer
 model.add(layers.BatchNormalization())
@@ -97,16 +95,16 @@ model.compile(loss='categorical_crossentropy',
              optimizer=opt,
              metrics=['accuracy'])
 
+# check mode argument
+if len(sys.argv) > 1:
+    mode = sys.argv[1]
+    modes.modes(mode, model, weightsFile, x_test, y_test)
+    sys.exit()
+
 # Take a look at the model summary
 model.summary()
 
-if len(sys.argv) > 1:
-    mode = sys.argv[1]
-    modes.modes(mode, model, x_test, y_test)
-    sys.exit()
-
-
-cb_checkpoint = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose=0, save_best_only=True)
+cb_checkpoint = ModelCheckpoint(filepath=weightsFile, verbose=0, save_best_only=True)
 cb_logger = CSVLogger('training.log')
 cb_val_los_monitor = EarlyStopping(monitor='val_loss', patience=10)
 callbacks = [
