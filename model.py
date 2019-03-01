@@ -1,67 +1,57 @@
-# -*- coding: utf-8 -*-
-
 import sys
-import numpy as np
-import matplotlib.pyplot as plt
-import tensorflow as tf
-from tensorflow.keras.callbacks import ModelCheckpoint
+import os
 
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, EarlyStopping, TensorBoard
+from tensorflow import set_random_seed
+from numpy.random import seed
+
+import modes
+import callbacks as cb
+
+# init random seed (enable for development)
+#seed(1)
+#set_random_seed(1)
+
+#turn off annoying warning
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
+## params
+batch_size=128
+epochs=150
+initializer = tf.contrib.layers.xavier_initializer()
+lr=0.0001
+activation = 'relu'
+#act_layer = layers.LeakyReLU()
+weightsFile = 'model.weights.best.hdf5'
+
+## images dimensions
+w, h = 28, 28
+channels = 1
 
 # Load the fashion-mnist pre-shuffled train data and test data
-(x_train, y_train), (x_test, y_test) = tf.keras.datasets.fashion_mnist.load_data()
-
+(x_train, y_train), (x_test, y_test) = keras.datasets.fashion_mnist.load_data()
 print("x_train shape:", x_train.shape, "y_train shape:", y_train.shape)
 
-# Print training set shape - note there are 60,000 training data of image size of 28x28, 60,000 train labels)
-print("x_train shape:", x_train.shape, "y_train shape:", y_train.shape)
-
-# Print the number of training and test datasets
-print(x_train.shape[0], 'train set')
-print(x_test.shape[0], 'test set')
-
-# Define the text labels
-fashion_mnist_labels = ["T-shirt/top",  # index 0
-                        "Trouser",      # index 1
-                        "Pullover",     # index 2 
-                        "Dress",        # index 3 
-                        "Coat",         # index 4
-                        "Sandal",       # index 5
-                        "Shirt",        # index 6 
-                        "Sneaker",      # index 7 
-                        "Bag",          # index 8 
-                        "Ankle boot"]   # index 9
-
-# Image index, you can pick any number between 0 and 59,999
-img_index = 5
-# y_train contains the lables, ranging from 0 to 9
-label_index = y_train[img_index]
-# Print the label, for example 2 Pullover
-print ("y = " + str(label_index) + " " +(fashion_mnist_labels[label_index]))
-# # Show one of the images from the training dataset
-plt.imshow(x_train[img_index])
-
-## Data normalization
+# Data normalization
 x_train = x_train.astype('float32') / 255
 x_test = x_test.astype('float32') / 255
 
-print("Number of train data - " + str(len(x_train)))
-print("Number of test data - " + str(len(x_test)))
-
-
-# Further break training data into train / validation sets (# put 5000 into validation set and keep remaining 55,000 for train)
-(x_train, x_valid) = x_train[5000:], x_train[:5000]
-(y_train, y_valid) = y_train[5000:], y_train[:5000]
+# Devide to train and validation sets
+(x_train, x_valid) = x_train[10000:], x_train[:10000]
+(y_train, y_valid) = y_train[10000:], y_train[:10000]
 
 # Reshape input data from (28, 28) to (28, 28, 1)
-w, h = 28, 28
 x_train = x_train.reshape(x_train.shape[0], w, h, 1)
 x_valid = x_valid.reshape(x_valid.shape[0], w, h, 1)
 x_test = x_test.reshape(x_test.shape[0], w, h, 1)
 
-# One-hot encode the labels
-y_train = tf.keras.utils.to_categorical(y_train, 10)
-y_valid = tf.keras.utils.to_categorical(y_valid, 10)
-y_test = tf.keras.utils.to_categorical(y_test, 10)
+# One-hot encode the labels (binary class vectors)
+y_train = keras.utils.to_categorical(y_train, 10)
+y_valid = keras.utils.to_categorical(y_valid, 10)
+y_test = keras.utils.to_categorical(y_test, 10)
 
 # Print training set shape
 print("x_train shape:", x_train.shape, "y_train shape:", y_train.shape)
@@ -71,68 +61,71 @@ print(x_train.shape[0], 'train set')
 print(x_valid.shape[0], 'validation set')
 print(x_test.shape[0], 'test set')
 
+model = keras.Sequential()
 
-model = tf.keras.Sequential()
+# CNN - 2 X BatchNormalization + Conv + Maxpooling + Droupout layers
+model.add(layers.BatchNormalization(input_shape=(h, w, channels)))
+model.add(layers.Conv2D(filters=32,kernel_size=3,activation=activation))
+model.add(layers.MaxPooling2D(pool_size=2))
+model.add(layers.Dropout(0.2))
+model.add(layers.BatchNormalization())
+model.add(layers.Conv2D(filters=64,kernel_size=3,padding='same',activation=activation))
+model.add(layers.MaxPooling2D(pool_size=2))
+model.add(layers.Dropout(0.3))
 
-# Must define the input shape in the first layer of the neural network
+# Converting to 1D feature Vector
+model.add(layers.Flatten())
 
-model.add(tf.keras.layers.Conv2D(filters=64, kernel_size=2, padding='same', activation='relu', input_shape=(28,28,1))) 
-model.add(tf.keras.layers.MaxPooling2D(pool_size=2))
-model.add(tf.keras.layers.Dropout(0.3))
-model.add(tf.keras.layers.Flatten())
-model.add(tf.keras.layers.Dense(256, activation='relu'))
-model.add(tf.keras.layers.Dropout(0.5))
-model.add(tf.keras.layers.Dense(10, activation='softmax'))
+# FC - 2 X BatchNormalization, Dense, Dropout.
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(512, activation=activation, kernel_initializer=initializer))
+model.add(layers.Dropout(0.4))
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(128, activation=activation))
+model.add(layers.Dropout(0.5))
+
+# BatchNormalization + last dense layer
+model.add(layers.BatchNormalization())
+model.add(layers.Dense(10))
+
+opt = keras.optimizers.Adam(lr=lr)
+
+## Compile the model
+model.compile(loss='categorical_crossentropy',
+             optimizer=opt,
+             metrics=['accuracy'])
+
+# check mode argument
+if len(sys.argv) > 1:
+    mode = sys.argv[1]
+    modes.modes(mode, model, weightsFile, x_test, y_test)
+    sys.exit()
 
 # Take a look at the model summary
 model.summary()
 
-## Compile the model
-model.compile(loss='categorical_crossentropy',
-             optimizer='adam',
-             metrics=['accuracy'])
+cb_checkpoint = ModelCheckpoint(filepath=weightsFile, verbose=0, save_best_only=True)
+cb_logger = CSVLogger('training.log')
+cb_val_los_monitor = EarlyStopping(monitor='val_loss', patience=10)
+callbacks = [
+    cb_checkpoint,
+    cb_logger,
+    cb_val_los_monitor,
+    cb.PlotCB(),
+    cb.TestCB((x_test, y_test)),
+]
 
-test = ""
-if len(sys.argv) > 1:
-    test = sys.argv[1]
+## Train the model
+model.fit(x_train,
+         y_train,
+         batch_size=batch_size,
+         epochs=epochs,
+         validation_data=(x_valid, y_valid),
+         callbacks=callbacks)
 
-if test != 'test':
-    ## Train the model
-    checkpointer = ModelCheckpoint(filepath='model.weights.best.hdf5', verbose = 1, save_best_only=True)
-    model.fit(x_train,
-             y_train,
-             batch_size=64,
-             epochs=20,
-             validation_data=(x_valid, y_valid),
-             callbacks=[checkpointer])
-
-
-# Load the weights with the best validation accuracy
-model.load_weights('model.weights.best.hdf5')
 
 # Evaluate the model on test set
 score = model.evaluate(x_test, y_test, verbose=0)
 
 # Print test accuracy
 print('\n', 'Test accuracy:', score[1])
-
-
-## Visualize prediction
-y_hat = model.predict(x_test)
-
-# Plot a random sample of 10 test images, their predicted labels and ground truth
-figure = plt.figure(figsize=(20, 8))
-for i, index in enumerate(np.random.choice(x_test.shape[0], size=15, replace=False)):
-    ax = figure.add_subplot(3, 5, i + 1, xticks=[], yticks=[])
-    # Display each image
-    ax.imshow(np.squeeze(x_test[index]))
-    predict_index = np.argmax(y_hat[index])
-    true_index = np.argmax(y_test[index])
-    # Set the title for each image
-    ax.set_title("{} ({})".format(fashion_mnist_labels[predict_index], 
-                                  fashion_mnist_labels[true_index]),
-                                  color=("green" if predict_index == true_index else "red"))
-
-
-##TODO:
-## adding xavier init
