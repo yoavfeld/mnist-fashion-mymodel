@@ -1,5 +1,5 @@
-# Mnist Fashion Neural Network Model
-DL training model on mnist fashion DB
+# Fashion Mnist Neural Network Model
+DL training model on fashion mnist DB
 
 ## Run
 ### training:
