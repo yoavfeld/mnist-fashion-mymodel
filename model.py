@@ -11,14 +11,14 @@ from numpy.random import seed
 import modes
 import callbacks as cb
 
-# init random seed (enable for development)
+# Init random seed (enable for development)
 #seed(1)
 #set_random_seed(1)
 
-#turn off annoying warning
+# Turn off annoying warning
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-## params
+# params
 batch_size=128
 epochs=150
 initializer = tf.contrib.layers.xavier_initializer()
@@ -27,7 +27,7 @@ activation = 'relu'
 #act_layer = layers.LeakyReLU()
 weightsFile = 'model.weights.best.hdf5'
 
-## images dimensions
+# images dimensions
 w, h = 28, 28
 channels = 1
 
@@ -90,12 +90,12 @@ model.add(layers.Dense(10))
 
 opt = keras.optimizers.Adam(lr=lr)
 
-## Compile the model
+# Compile the model
 model.compile(loss='categorical_crossentropy',
              optimizer=opt,
              metrics=['accuracy'])
 
-# check mode argument
+# Check mode argument
 if len(sys.argv) > 1:
     mode = sys.argv[1]
     modes.modes(mode, model, weightsFile, x_test, y_test)
@@ -115,7 +115,7 @@ callbacks = [
     cb.TestCB((x_test, y_test)),
 ]
 
-## Train the model
+# Train the model
 model.fit(x_train,
          y_train,
          batch_size=batch_size,

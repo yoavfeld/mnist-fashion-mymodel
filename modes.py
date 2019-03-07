@@ -17,7 +17,7 @@ def modes(mode, model, weightsFile, x_test, y_test):
         end = time.clock()
         print("Time per image prediction: {} ".format((end - start) / len(x_test)))
     elif mode == 'arc':
-        plot_model(model, to_file='model.png')
+        plot_model(model, to_file='model.png', show_shapes=True)
     elif mode == 'vis':
         plot.visualize_accuracy(model, x_test, y_test)
     elif mode == 'cm':
