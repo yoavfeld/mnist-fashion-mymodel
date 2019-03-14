@@ -3,10 +3,10 @@ DL training model on fashion mnist DB
 
 ## Code
 
-model.py - model training main file
-callbacks.py - custom callbacks
-modes.py - runnin modes (see Run section)
-plot.py - ploting functions
+model.py - model training main file<br/>
+callbacks.py - custom callbacks<br/>
+modes.py - runnin modes (see Run section)<br/>
+plot.py - ploting functions<br/>
 
 ## Run
 ### training:
