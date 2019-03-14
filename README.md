@@ -1,6 +1,13 @@
 # Fashion Mnist Neural Network Model
 DL training model on fashion mnist DB
 
+## Code
+
+model.py - model training main file
+callbacks.py - custom callbacks
+modes.py - runnin modes (see Run section)
+plot.py - ploting functions
+
 ## Run
 ### training:
 python3.6 model.py
