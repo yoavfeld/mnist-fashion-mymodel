@@ -1,5 +1,5 @@
 # Fashion Mnist Neural Network Model
-DL training model on fashion mnist DB
+Deep Learning training model on fashion mnist DB
 
 ## Code
 
